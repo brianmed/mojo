@@ -99,6 +99,35 @@ my $nextdir = $dir->child('foo', 'foobar')->make_path({error => \my $error});
 ok -d $nextdir, 'directory exists';
 ok $error, 'directory already existed';
 
+# Make path, chmod
+my $noaccess = $dir->child('foo', 'noaccess')->make_path({chmod => 0000});
+ok -d $noaccess, 'directory exists';
+ok !-r $noaccess, 'directory is not readable';
+ok !-w $noaccess, 'directory is not writable';
+ok !-x $noaccess, 'directory is not accessible';
+ok -d $noaccess->remove_tree({keep_root => 1}), 'directory still exists';
+
+my $onlyread = $dir->child('foo', 'onlyread')->make_path({chmod => 0400});
+ok -d $onlyread, 'directory exists';
+ok -r $onlyread, 'directory is not readable';
+ok !-w $onlyread, 'directory is not writable';
+ok !-x $onlyread, 'directory is not accessible';
+ok -d $onlyread->remove_tree({keep_root => 1}), 'directory still exists';
+
+my $onlywrite = $dir->child('foo', 'onlywrite')->make_path({chmod => 0200});
+ok -d $onlywrite, 'directory exists';
+ok !-r $onlywrite, 'directory is not readable';
+ok -w $onlywrite, 'directory is not writable';
+ok !-x $onlywrite, 'directory is not accessible';
+ok -d $onlywrite->remove_tree({keep_root => 1}), 'directory still exists';
+
+my $onlyaccess = $dir->child('foo', 'onlyaccess')->make_path({chmod => 0100});
+ok -d $onlyaccess, 'directory exists';
+ok !-r $onlyaccess, 'directory is not readable';
+ok !-w $onlyaccess, 'directory is not writable';
+ok -x $onlyaccess, 'directory is not accessible';
+ok -d $onlyaccess->remove_tree({keep_root => 1}), 'directory still exists';
+
 # Remove tree
 $dir = tempdir;
 $dir->child('foo', 'bar')->make_path->child('test.txt')->spurt('test!');
@@ -109,6 +138,18 @@ ok -e $subdir->child('bar')->make_path->child('test.txt')->spurt('test'),
 ok -d $subdir->remove_tree({keep_root => 1}), 'directory still exists';
 ok !-e $subdir->child('bar'), 'children have been removed';
 ok !-e $dir->child('foo')->remove_tree->to_string, 'directory has been removed';
+
+# Remove tree, safe
+my $foobar = $dir->child('foo', 'bar')->make_path;
+my $noissues = $foobar->child('issues', 'no')->make_path;
+my $permission = $foobar->child('issues', 'permission')->make_path({chmod => 0000});
+undef $error;
+ok -d $foobar->remove_tree({keep_root => 1, safe => 1, error => \$error}), 'directory still exists';
+ok ref $error && scalar(@{ $error }), 'we got output while deleting';
+ok !-e $noissues, 'directory is gone';
+ok -e $permission, 'directory still here';
+ok -d $foobar->remove_tree({keep_root => 1}), 'directory still exists';
+ok !-e $permission, 'directory has been removed';
 
 # Move to
 $dir = tempdir;
